@@ -1,0 +1,39 @@
+# Power flows down, signals flow right, feedback and taps go anywhere.
+[grid]
+rows = 11
+cols = 5
+col_px = 420
+row_px = 140
+
+[directions]
+feedback = "free"  # listed first on an edge, so it wins over sig
+pwr = "down"
+sup = "down"
+sup-aux = "down"
+sig = "right"
+flt = "free"
+mech = "free"
+shunt = "free"
+default = "free"
+
+# The power column, control row and inputs, placed by hand. The solver places
+# the sensing blocks (ADCs, overcurrent latch, encoder).
+[pins]
+usb = [0, 1]
+battery = [0, 4]
+pdsink = [1, 0]
+efuse = [1, 2]
+bswitch = [1, 4]
+busmux = [2, 3]
+chopper = [3, 2]
+bus = [3, 3]
+tvs = [3, 4]
+buck = [4, 2]
+logicmux = [5, 1]
+ldo = [6, 1]
+controller = [7, 0]
+buffer = [7, 1]
+driver = [7, 2]
+bridge = [7, 3]
+amps = [8, 3]
+motor = [10, 3]

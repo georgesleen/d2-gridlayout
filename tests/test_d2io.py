@@ -81,3 +81,13 @@ def test_reads_a_real_d2_file(tmp_path: Path) -> None:
     f.write_text('a: "A"\nb: "B"\na <- b: {class: sig}\nclasses: {sig: {style.stroke: blue}}\n')
     (edge,) = load_diagram(f, RULES).graph.edges
     assert (edge.src, edge.dst, edge.direction) == ("b", "a", Direction.RIGHT)
+
+
+@pytest.mark.skipif(not HELPER_READY, reason="needs node and `npm install`")
+def test_written_file_still_compiles(tmp_path: Path) -> None:
+    f = tmp_path / "t.d2"
+    f.write_text('a: "A"\nb: "B"\na -> b\n')
+    d = load_diagram(f, RULES)
+    p = Placement({NodeId("a"): Cell(0, 0), NodeId("b"): Cell(1, 0)})
+    f.write_text(write_positions(f.read_text(), p, d.sizes, RULES))
+    assert load_diagram(f, RULES).graph.nodes == (NodeId("a"), NodeId("b"))

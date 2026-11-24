@@ -91,7 +91,7 @@ def write_positions(
     """
     lines = [BEGIN, f"# grid {rules.grid.rows}x{rules.grid.cols}, pitch {rules.col_px}x{rules.row_px} px"]
     if tala:
-        lines.append("vars.d2-config.layout-engine: tala")
+        lines.append("vars: {d2-config: {layout-engine: tala}}")
     for node in sorted(placement.cells, key=lambda n: (placement.cells[n], n)):
         cell, size = placement.cells[node], sizes[node]
         left = round(cell.col * rules.col_px + (rules.col_px - size.width) / 2)

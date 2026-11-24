@@ -1,0 +1,156 @@
+vars: {
+  d2-legend: {
+    np: "Power" {class: lg-power}
+    nc: "Control" {class: lg-control}
+    nn: "Sensing" {class: lg-sense}
+    nt: "Protection" {class: lg-protect}
+    a: "" {class: legend-node}
+    b: "" {class: legend-node}
+    a -> b: "Motor power" {class: pwr}
+    c: "" {class: legend-node}
+    d: "" {class: legend-node}
+    c -> d: "Logic supply" {class: sup}
+    g: "" {class: legend-node}
+    h: "" {class: legend-node}
+    g -> h: "USB, logic only" {class: sup-aux}
+    e: "" {class: legend-node}
+    f: "" {class: legend-node}
+    e -> f: "Signal / data" {class: sig}
+    k: "" {class: legend-node}
+    l: "" {class: legend-node}
+    k -> l: "Fault" {class: flt}
+    i: "" {class: legend-node}
+    j: "" {class: legend-node}
+    i -- j: "Mechanical" {class: mech}
+  }
+}
+
+# Block colour = what the block is. Line colour = what the wire carries.
+classes: {
+  # Layout-only tag: sensing and feedback lines may run any direction.
+  feedback: {}
+  power: {label.near: center-center; width: 320; height: 64; style: {fill: "#f8d7d3"; stroke: "#c0392b"; stroke-width: 2; border-radius: 6; font-size: 24; font-color: "#111"}}
+  bus: {label.near: center-center; width: 320; height: 64; style: {fill: "#f8d7d3"; stroke: "#c0392b"; stroke-width: 4; border-radius: 6; font-size: 24; font-color: "#111"}}
+  supply: {label.near: center-center; width: 320; height: 64; style: {fill: "#f8d7d3"; stroke: "#c0392b"; stroke-width: 2; border-radius: 6; font-size: 24; font-color: "#111"}}
+  control: {label.near: center-center; width: 320; height: 64; style: {fill: "#d6e4fa"; stroke: "#2c5aa0"; stroke-width: 2; border-radius: 6; font-size: 24; font-color: "#111"}}
+  sense: {label.near: center-center; width: 320; height: 64; style: {fill: "#d7efd4"; stroke: "#2e7d32"; stroke-width: 2; border-radius: 6; font-size: 24; font-color: "#111"}}
+  protect: {label.near: center-center; width: 320; height: 64; style: {fill: "#fbeec2"; stroke: "#b8860b"; stroke-width: 2; border-radius: 6; font-size: 24; font-color: "#111"}}
+  mux-power: {shape: image; icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNjAgODQiIHByZXNlcnZlQXNwZWN0UmF0aW89Im5vbmUiPjxwb2x5Z29uIHBvaW50cz0iMiwyIDM1OCwyIDMxOCw4MiA0Miw4MiIgZmlsbD0iI2Y4ZDdkMyIgc3Ryb2tlPSIjYzAzOTJiIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4="; width: 360; height: 84; label.near: center-center; style: {font-size: 24; font-color: "#111"}}
+  mux-supply: {shape: image; icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNjAgODQiIHByZXNlcnZlQXNwZWN0UmF0aW89Im5vbmUiPjxwb2x5Z29uIHBvaW50cz0iMiwyIDM1OCwyIDMxOCw4MiA0Miw4MiIgZmlsbD0iI2Y4ZDdkMyIgc3Ryb2tlPSIjYzAzOTJiIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4="; width: 360; height: 84; label.near: center-center; style: {font-size: 24; font-color: "#111"}}
+  lg-power: {width: 36; height: 20; style: {fill: "#f8d7d3"; stroke: "#c0392b"; stroke-width: 2; border-radius: 3; font-size: 15}}
+  lg-control: {width: 36; height: 20; style: {fill: "#d6e4fa"; stroke: "#2c5aa0"; stroke-width: 2; border-radius: 3; font-size: 15}}
+  lg-sense: {width: 36; height: 20; style: {fill: "#d7efd4"; stroke: "#2e7d32"; stroke-width: 2; border-radius: 3; font-size: 15}}
+  lg-protect: {width: 36; height: 20; style: {fill: "#fbeec2"; stroke: "#b8860b"; stroke-width: 2; border-radius: 3; font-size: 15}}
+  legend-node: {shape: circle; width: 4; height: 4; style: {fill: "#ffffff"; stroke: "#ffffff"}}
+
+  pwr: {style: {stroke: "#b03a2e"; stroke-width: 5; font-size: 18; font-color: "#7b241c"}}
+  sup: {style: {stroke: "#b03a2e"; stroke-width: 2; font-size: 18; font-color: "#7b241c"}}
+  sup-aux: {style: {stroke: "#b03a2e"; stroke-width: 2; stroke-dash: 5; font-size: 18; font-color: "#7b241c"}}
+  sig: {style: {stroke: "#2c5aa0"; stroke-width: 2; font-size: 18; font-color: "#1f3f73"}}
+  flt: {style: {stroke: "#c87f0a"; stroke-width: 3; font-size: 18; font-color: "#7a4d05"}}
+  mech: {style: {stroke: "#8a94a6"; stroke-width: 2; stroke-dash: 2}}
+  shunt: {style: {stroke: "#b03a2e"; stroke-width: 2}}
+}
+
+# (columns 420 px apart, rows 140 px apart) so that power runs top to bottom
+# and signals run left to right; TALA routes the lines orthogonally.
+# Render with D2 v0.9+:  d2 system-overview.d2 out.svg  (TALA is set in d2-config)
+
+usb: "USB-C port" {class: power}
+battery: "Battery / bench input" {class: power}
+pdsink: "PD sink controller" {class: control}
+efuse: "eFuse\none-way, current limit" {class: power}
+bswitch: "Ideal-diode switch\ntwo-way" {class: power}
+busmux: "Bus source select" {class: mux-power}
+chopper: "Brake chopper" {class: protect}
+bus: "Motor bus\n7–22 V" {class: bus}
+tvs: "TVS clamp" {class: protect}
+buck: "5 V buck" {class: supply}
+logicmux: "Logic OR\nideal diodes" {class: mux-supply}
+ldo: "3.3 V LDO" {class: supply}
+controller: "Controller\nRP2354" {class: control}
+buffer: "Gate buffer" {class: control}
+driver: "Gate driver" {class: control}
+bridge: "Half-bridges\n6 FETs" {class: power}
+ocp: "Overcurrent latch" {class: protect}
+amps: "Shunts + amplifiers" {class: sense}
+adcs: "Simultaneous ADCs" {class: sense}
+encoder: "Encoder" {class: sense}
+motor: "Motor" {class: power}
+
+usb -> efuse: "VBUS, PD contract" {class: pwr}
+efuse -> busmux {class: pwr}
+busmux <-> bus {class: pwr}
+battery <-> bswitch: "regen in battery mode" {class: pwr}
+bswitch <-> busmux {class: pwr}
+usb -> pdsink: "CC" {class: sig}
+pdsink -> controller: "I²C" {class: sig}
+usb -> controller: "D+ / D−" {class: sig}
+usb -> logicmux: "any USB" {class: sup-aux}
+bus -- chopper {class: shunt}
+bus -- tvs {class: shunt}
+bus -> buck {class: pwr}
+buck -> logicmux: "5 V" {class: sup}
+logicmux -> ldo: "5 V" {class: sup}
+ldo -> controller: "3.3 V" {class: sup}
+buck -> driver: "gate supply" {class: sup}
+bus -> bridge {class: pwr}
+controller -> buffer: "PWM" {class: sig}
+buffer -> driver {class: sig}
+driver -> bridge: "gates" {class: sig}
+bridge -> amps: "phases" {class: pwr}
+amps -> motor: "phases" {class: pwr}
+amps -> adcs {class: [feedback, sig]}
+controller <-> adcs: "trigger · samples" {class: [feedback, sig]}
+amps -> ocp {class: flt}
+ocp -> buffer: "all gates off" {class: flt}
+ocp -> controller: "fault" {class: flt}
+encoder -- motor {class: mech}
+encoder -> controller: "angle · SPI" {class: [feedback, sig]}
+
+# --- d2-gridlayout positions (generated, edits here are overwritten) ---
+# grid 11x5, pitch 420x140 px
+vars: {d2-config: {layout-engine: tala}}
+usb.top: 38
+usb.left: 470
+battery.top: 38
+battery.left: 1730
+pdsink.top: 178
+pdsink.left: 50
+efuse.top: 178
+efuse.left: 890
+bswitch.top: 178
+bswitch.left: 1730
+busmux.top: 308
+busmux.left: 1290
+chopper.top: 458
+chopper.left: 890
+bus.top: 458
+bus.left: 1310
+tvs.top: 458
+tvs.left: 1730
+buck.top: 598
+buck.left: 890
+logicmux.top: 728
+logicmux.left: 450
+ldo.top: 878
+ldo.left: 470
+controller.top: 1018
+controller.left: 50
+buffer.top: 1018
+buffer.left: 470
+driver.top: 1018
+driver.left: 890
+bridge.top: 1018
+bridge.left: 1310
+ocp.top: 1158
+ocp.left: 470
+amps.top: 1158
+amps.left: 1310
+adcs.top: 1298
+adcs.left: 50
+encoder.top: 1438
+encoder.left: 470
+motor.top: 1438
+motor.left: 1310
+# --- end d2-gridlayout ---
