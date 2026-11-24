@@ -1,0 +1,9 @@
+{
+  "name": "d2-gridlayout-helper",
+  "private": true,
+  "type": "module",
+  "description": "Node helper that reads D2 files for d2-gridlayout",
+  "dependencies": {
+    "@terrastruct/d2": "^0.1.33"
+  }
+}
