@@ -1,0 +1,8 @@
+__pycache__/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+node_modules/
+*.svg
+*.png
+!examples/*.svg
