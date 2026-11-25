@@ -66,6 +66,10 @@ def build_diagram(data: Mapping[str, Any], rules: Rules) -> Diagram:
         if src not in known or dst not in known:
             skipped.append(f"{e['src']} -> {e['dst']}")
             continue
+        for c in e["classes"]:
+            if "," in c:
+                print(f"warning: class {c!r} on {e['src']} -> {e['dst']} looks like a list; "
+                      "D2 separates class lists with ';'", file=sys.stderr)
         kind = next((EdgeKind(c) for c in e["classes"] if EdgeKind(c) in rules.directions), DEFAULT_KIND)
         edges.append(Edge(src, dst, kind, rules.direction_for(kind)))
 

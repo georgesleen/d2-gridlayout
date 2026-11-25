@@ -65,7 +65,7 @@ ignore = ["_*"]  # node id globs to leave out
 
 An edge's kind is the **first** of its D2 classes that appears in
 `[directions]`. A layout-only tag therefore overrides the styling class:
-`a -> b {class: [feedback, sig]}` is styled as a signal but placed freely.
+`a -> b {class: [feedback; sig]}` is styled as a signal but placed freely.
 Define the tag as an empty class (`feedback: {}`) so D2 accepts it.
 
 Edges are read in arrow direction, so `a <- b` counts as running from b to a.

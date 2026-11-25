@@ -100,10 +100,10 @@ buffer -> driver {class: sig}
 driver -> bridge: "gates" {class: sig}
 bridge -> amps: "phases" {class: pwr}
 amps -> motor: "phases" {class: pwr}
-amps -> adcs {class: [feedback, sig]}
-controller <-> adcs: "trigger · samples" {class: [feedback, sig]}
+amps -> adcs {class: [feedback; sig]}
+controller <-> adcs: "trigger · samples" {class: [feedback; sig]}
 amps -> ocp {class: flt}
 ocp -> buffer: "all gates off" {class: flt}
 ocp -> controller: "fault" {class: flt}
 encoder -- motor {class: mech}
-encoder -> controller: "angle · SPI" {class: [feedback, sig]}
+encoder -> controller: "angle · SPI" {class: [feedback; sig]}

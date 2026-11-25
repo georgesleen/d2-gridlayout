@@ -91,3 +91,9 @@ def test_written_file_still_compiles(tmp_path: Path) -> None:
     p = Placement({NodeId("a"): Cell(0, 0), NodeId("b"): Cell(1, 0)})
     f.write_text(write_positions(f.read_text(), p, d.sizes, RULES))
     assert load_diagram(f, RULES).graph.nodes == (NodeId("a"), NodeId("b"))
+
+
+def test_comma_class_list_warns(capsys: pytest.CaptureFixture[str]) -> None:
+    data = raw(edges=[{"src": "a", "dst": "b", "srcArrow": False, "dstArrow": True, "classes": ["pwr, sig"]}])
+    build_diagram(data, RULES)
+    assert "separates class lists with ';'" in capsys.readouterr().err
