@@ -118,3 +118,14 @@ def test_centered_l_leaves_the_middle_of_the_exit_side() -> None:
     dst = Rect(300, 0, 100, 60)  # cy 30
     pts = route_points(src, dst, RouteSpec(Side.TOP, Side.LEFT, center=True))
     assert pts == [(50, 196), (50, 30), (296, 30)]
+
+
+def test_shapes_reads_circles_as_their_bounding_box() -> None:
+    svg = f'<g class="{_b64("j")} x"><g class="shape" ><ellipse rx="7" ry="7" cx="100" cy="50" /></g></g>'
+    assert shapes(svg)["j"] == Rect(93, 43, 14, 14)
+
+
+def test_small_block_still_gets_a_straight_line() -> None:
+    dot = Rect(0, 23, 14, 14)  # cy 30
+    tall = Rect(300, 0, 50, 400)
+    assert route_points(dot, tall, RouteSpec(Side.RIGHT, Side.LEFT)) == [(18, 30), (296, 30)]

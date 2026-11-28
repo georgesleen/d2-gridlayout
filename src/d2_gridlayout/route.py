@@ -111,7 +111,8 @@ def route_points(src: Rect, dst: Rect, spec: RouteSpec) -> list[Point]:
         s_lo, s_hi = _span(src, spec.exit)
         d_lo, d_hi = _span(dst, spec.enter)
         s_mid = (s_lo + s_hi) / 2
-        lo, hi = max(s_lo, d_lo) + margin, min(s_hi, d_hi) - margin
+        m = min(margin, (s_hi - s_lo) / 2, (d_hi - d_lo) / 2)
+        lo, hi = max(s_lo, d_lo) + m, min(s_hi, d_hi) - m
         if lo <= hi:
             along = (_clamp(s_mid, lo, hi) if d_lo <= s_mid <= d_hi else (lo + hi) / 2) + spec.offset
             return [_edge_point(src, spec.exit, along), _edge_point(dst, spec.enter, along)]
@@ -185,6 +186,10 @@ _SHAPE = re.compile(
     r'<g class="(?P<id>[A-Za-z0-9+/=]+)[^"]*"><g class="shape" ><(?:rect|image)[^>]*?'
     r' x="(?P<x>[-\d.]+)" y="(?P<y>[-\d.]+)" width="(?P<w>[\d.]+)" height="(?P<h>[\d.]+)"'
 )
+_ELLIPSE = re.compile(
+    r'<g class="(?P<id>[A-Za-z0-9+/=]+)[^"]*"><g class="shape" ><ellipse[^>]*?'
+    r' rx="(?P<rx>[\d.]+)" ry="(?P<ry>[\d.]+)" cx="(?P<cx>[-\d.]+)" cy="(?P<cy>[-\d.]+)"'
+)
 _GROUP = re.compile(r'<g class="(?P<id>[A-Za-z0-9+/=]+)[^"]*">(?P<body>(?:(?!</g>).)*?<path d="[^"]*".*?)</g>', re.S)
 _TEXT = re.compile(r'<text x="(?P<x>[-\d.]+)" y="(?P<y>[-\d.]+)"')
 
@@ -197,12 +202,17 @@ def _decode(b64: str) -> str | None:
 
 
 def shapes(svg: str) -> dict[str, Rect]:
-    """The rectangle of every rect or image shape in a D2 SVG, by D2 id."""
+    """The bounding rectangle of every rect, image, circle or oval shape in a D2 SVG, by D2 id."""
     out: dict[str, Rect] = {}
     for m in _SHAPE.finditer(svg):
         name = _decode(m["id"])
         if name is not None:
             out[name] = Rect(float(m["x"]), float(m["y"]), float(m["w"]), float(m["h"]))
+    for m in _ELLIPSE.finditer(svg):
+        name = _decode(m["id"])
+        if name is not None:
+            rx, ry = float(m["rx"]), float(m["ry"])
+            out[name] = Rect(float(m["cx"]) - rx, float(m["cy"]) - ry, 2 * rx, 2 * ry)
     return out
 
 
