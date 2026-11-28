@@ -87,6 +87,12 @@ def test_apply_routes_rewrites_path_label_and_mask() -> None:
     assert 'x="185" y="-2" width="30"' in out
 
 
+def test_apply_routes_moves_the_edge_mask_hole_too() -> None:
+    svg = SVG + '<mask><rect x="34.5" y="80" width="31" height="26" fill="black"></rect></mask>'
+    out = apply_routes(svg, {"a -> b": RouteSpec(Side.RIGHT, Side.LEFT)})
+    assert 'x="184.5" y="-2" width="31"' in out
+
+
 def test_shapes_and_missing_edge() -> None:
     assert shapes(SVG)["b"] == Rect(300, -100, 50, 400)
     with pytest.raises(ValueError):

@@ -292,16 +292,26 @@ def apply_routes(svg: str, routes: Mapping[str, RouteSpec]) -> str:
     return out
 
 
-_MASK_RECT = re.compile(r'<rect x="(?P<x>[-\d.]+)" y="(?P<y>[-\d.]+)" width="(?P<w>[\d.]+)" height="(?P<h>[\d.]+)" fill="rgba\(0,0,0,0.75\)"></rect>')
+_MASK_RECT = re.compile(
+    r'<rect x="(?P<x>[-\d.]+)" y="(?P<y>[-\d.]+)" width="(?P<w>[\d.]+)" height="(?P<h>[\d.]+)" '
+    r'fill="(?:rgba\(0,0,0,0.75\)|black)">'
+)
 
 
 def _move_mask(svg: str, old: Point, new: Point) -> str:
-    """Move the mask hole under a label from its old text anchor to a new one."""
+    """Move the mask holes under a label from its old text anchor to a new one.
+
+    D2 cuts two holes per label: one in the diagram-wide mask and one in the
+    edge's own mask, which hides the edge's line under the label.
+    """
     (ox, oy), (nx, ny) = old, new
+    out: list[str] = []
+    last = 0
     for m in _MASK_RECT.finditer(svg):
         x, y, w = float(m["x"]), float(m["y"]), float(m["w"])
-        if abs(x + w / 2 - ox) <= 1 and abs(y + 20 - oy) <= 1:
+        if abs(x + w / 2 - ox) <= 1.5 and abs(y + 20 - oy) <= 1:
             moved = m.group(0).replace(f'x="{m["x"]}"', f'x="{_fmt(nx - w / 2)}"', 1)
             moved = moved.replace(f'y="{m["y"]}"', f'y="{_fmt(ny - 20)}"', 1)
-            return svg[: m.start()] + moved + svg[m.end():]
-    return svg
+            out += [svg[last:m.start()], moved]
+            last = m.end()
+    return "".join(out) + svg[last:]
