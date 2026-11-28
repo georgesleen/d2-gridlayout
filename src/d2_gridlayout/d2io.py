@@ -146,20 +146,39 @@ def unnest(relative: Mapping[str, Pos], shift: Pos) -> dict[str, Pos]:
 def box_rects(
     absolute: Mapping[str, Pos], sizes: Mapping[NodeId, Size], rules: Rules
 ) -> dict[str, tuple[Pos, Size]]:
-    """The position and size of each background box, enclosing its member blocks."""
+    """The position and size of each background box, enclosing its members.
+
+    A member is a placed top-level block or another box.
+
+    Raises:
+        ValueError: for a box with no members, a nested member, or boxes that enclose each other.
+    """
+    rects: dict[str, tuple[Pos, Size]] = {n: (p, sizes[NodeId(n)]) for n, p in absolute.items()}
     out: dict[str, tuple[Pos, Size]] = {}
-    for box, patterns in rules.boxes.items():
-        members = [n for n in absolute if any(fnmatch.fnmatchcase(n, p) for p in patterns)]
-        if not members:
-            raise ValueError(f"[boxes] {box} matches no placed block")
-        if any("." in m for m in members):
-            raise ValueError(f"[boxes] {box}: members must be top-level blocks")
-        pad, label = rules.box_padding, rules.box_label_px
-        top = min(absolute[m].top for m in members) - pad - label
-        left = min(absolute[m].left for m in members) - pad
-        bottom = max(absolute[m].top + sizes[NodeId(m)].height for m in members) + pad
-        right = max(absolute[m].left + sizes[NodeId(m)].width for m in members) + pad
-        out[box] = (Pos(round(top), round(left)), Size(round(right - left), round(bottom - top)))
+    pending = dict(rules.boxes)
+    while pending:
+        progressed = False
+        for box, patterns in list(pending.items()):
+            def match(n: str, patterns: tuple[str, ...] = patterns) -> bool:
+                return any(fnmatch.fnmatchcase(n, p) for p in patterns)
+            if any(match(b) for b in pending if b != box):
+                continue  # wait for the boxes inside this one
+            members = [n for n in rects if match(n)]
+            if not members:
+                raise ValueError(f"[boxes] {box} matches no placed block or box")
+            if any("." in m for m in members):
+                raise ValueError(f"[boxes] {box}: members must be top-level blocks")
+            pad, label = rules.box_padding, rules.box_label_px
+            top = min(rects[m][0].top for m in members) - pad - label
+            left = min(rects[m][0].left for m in members) - pad
+            bottom = max(rects[m][0].top + rects[m][1].height for m in members) + pad
+            right = max(rects[m][0].left + rects[m][1].width for m in members) + pad
+            rect = (Pos(round(top), round(left)), Size(round(right - left), round(bottom - top)))
+            out[box] = rects[box] = rect
+            del pending[box]
+            progressed = True
+        if not progressed:
+            raise ValueError(f"[boxes] these boxes enclose each other: {', '.join(sorted(pending))}")
     return out
 
 

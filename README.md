@@ -26,6 +26,7 @@ Rendering the result needs the D2 CLI **v0.9 or later**, which bundles TALA.
 ```sh
 d2-gridlayout layout diagram.d2 --rules rules.toml   # writes positions into diagram.d2
 d2 diagram.d2 diagram.svg                            # TALA is set by the generated block
+d2-gridlayout route diagram.svg --rules rules.toml   # redraw the lines in [routes]
 d2-gridlayout score diagram.d2 --rules rules.toml    # report on the current layout
 ```
 
@@ -72,6 +73,7 @@ Edges are read in arrow direction, so `a <- b` counts as running from b to a.
 Containers aren't placed (only the blocks inside them), and edges to a
 container are skipped with a warning. Blocks inside a container get positions
 relative to it, as TALA expects, and the container is placed around them.
+TALA routes lines between containers poorly; boxes (below) avoid that.
 
 ```toml
 [boxes]            # background box -> node id globs it encloses
@@ -83,9 +85,28 @@ box_label_px = 40  # extra px above for the box label
 ```
 
 A box is a plain top-level shape drawn behind its blocks, which is an
-alternative to a container when you only want a visual grouping. The tool
-writes its position and size. Declare boxes first in the `.d2` file so they
-draw underneath.
+alternative to a container when you only want a visual grouping. A box can
+also enclose other boxes. The tool writes its position and size. Declare
+boxes first in the `.d2` file so they draw underneath.
+
+## Hand routes
+
+TALA keeps locked positions but picks its own connection points along each
+side, so it often bends a line that could run straight. `route` rewrites the
+listed lines in the rendered SVG, keeping D2's colours, arrowheads and labels:
+
+```toml
+[routes]           # edge -> exit side, entry side
+"a -> b" = {exit = "right", enter = "left"}
+"conn -> mux" = {exit = "left", enter = "top", gap = 60, offset = -60}
+```
+
+Parallel sides give a straight line where the blocks overlap, or a Z.
+Perpendicular sides give an L whose last leg is `gap` px long. `offset` moves
+the line along the entry side, so that two lines between the same blocks stay
+apart. Keys are D2 edge ids; add `[n]` for the nth edge between a pair. D2
+numbers `<->` edges across both orders, and the error for a missing edge lists
+the ids present.
 
 ## How it works
 

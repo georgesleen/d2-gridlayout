@@ -19,6 +19,9 @@ Example:
     [boxes]           # background box id -> node id globs it encloses
     board = ["mcu", "ref*"]
 
+    [routes]          # edge -> hand route, applied to the SVG by `route`
+    "a -> b" = {exit = "left", enter = "top", gap = 40, offset = 0}
+
     [options]
     ignore = ["_*"]   # node id globs to leave out
     box_padding = 40  # gap between a box and the blocks inside it, px
@@ -33,6 +36,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .model import Cell, Direction, EdgeKind, Grid, NodeId
+from .route import RouteSpec, Side, edge_id
 
 DEFAULT_KIND = EdgeKind("default")
 
@@ -48,6 +52,7 @@ class Rules:
     boxes: Mapping[NodeId, tuple[str, ...]] = field(default_factory=dict)
     box_padding: int = 40
     box_label_px: int = 40
+    routes: Mapping[str, RouteSpec] = field(default_factory=dict)
 
     def direction_for(self, kind: EdgeKind) -> Direction:
         return self.directions.get(kind, self.directions.get(DEFAULT_KIND, Direction.FREE))
@@ -93,9 +98,20 @@ def parse_rules(data: Mapping[str, Any]) -> Rules:
             raise ValueError(f"[boxes] {k}: boxes must be top-level D2 shapes")
         boxes[NodeId(k)] = tuple(v)
 
+    routes: dict[str, RouteSpec] = {}
+    for k, v in data.get("routes", {}).items():
+        edge_id(k)
+        if not isinstance(v, dict):
+            raise ValueError(f"[routes] {k} must be a table like {{exit = \"left\", enter = \"top\"}}")
+        try:
+            spec = RouteSpec(Side(v["exit"]), Side(v["enter"]), int(v.get("gap", 40)), int(v.get("offset", 0)))
+        except (KeyError, ValueError):
+            raise ValueError(f"[routes] {k}: exit and enter must each be left, right, top or bottom") from None
+        routes[k] = spec
+
     return Rules(
         grid, _int(g, "col_px", 420), _int(g, "row_px", 140), directions, pins, tuple(ignore),
-        boxes, _int(opts, "box_padding", 40), _int(opts, "box_label_px", 40),
+        boxes, _int(opts, "box_padding", 40), _int(opts, "box_label_px", 40), routes,
     )
 
 

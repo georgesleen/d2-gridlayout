@@ -1,4 +1,4 @@
-"""Command line: `layout` places blocks, `score` reports on the current layout."""
+"""Command line: `layout` places blocks, `score` reports on the current layout, `route` redraws chosen lines."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from .cost import Breakdown, evaluate
 from .d2io import load_diagram, read_positions, write_positions
 from .model import Cell, Graph, NodeId, Placement
+from .route import apply_routes
 from .rules import Rules, load_rules
 from .solver import anneal, brute_force
 
@@ -79,6 +80,17 @@ def cmd_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_route(args: argparse.Namespace) -> int:
+    rules = load_rules(args.rules)
+    if not rules.routes:
+        print("no [routes] in the rules file", file=sys.stderr)
+        return 1
+    out = args.output or args.svg
+    out.write_text(apply_routes(args.svg.read_text(), rules.routes))
+    print(f"routed {len(rules.routes)} lines into {out}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="d2-gridlayout", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -99,6 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("diagram", type=Path)
     sc.add_argument("--rules", type=Path, required=True)
     sc.set_defaults(func=cmd_score)
+
+    ro = sub.add_parser("route", help="redraw the lines listed in [routes] in a rendered SVG")
+    ro.add_argument("svg", type=Path)
+    ro.add_argument("--rules", type=Path, required=True)
+    ro.add_argument("-o", "--output", type=Path, help="default: overwrite the input")
+    ro.set_defaults(func=cmd_route)
 
     args = ap.parse_args(argv)
     result: int = args.func(args)

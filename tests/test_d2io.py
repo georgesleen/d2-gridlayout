@@ -181,3 +181,22 @@ def test_box_with_no_members_rejected() -> None:
 def test_nested_box_id_rejected() -> None:
     with pytest.raises(ValueError):
         parse_rules({"grid": {"rows": 1, "cols": 1}, "boxes": {"g.bg": ["a"]}})
+
+
+def test_box_can_enclose_another_box() -> None:
+    rules = parse_rules({
+        "grid": {"rows": 3, "cols": 3, "col_px": 400, "row_px": 120},
+        "boxes": {"outer": ["inner", "b"], "inner": ["a"]},
+        "options": {"box_padding": 20, "box_label_px": 30},
+    })
+    sizes = {NodeId("a"): Size(300, 60), NodeId("b"): Size(200, 60)}
+    p = Placement({NodeId("a"): Cell(1, 0), NodeId("b"): Cell(1, 1)})
+    out = write_positions("a\nb\n", p, sizes, rules)
+    # inner: a at top 150, left 50 -> inner top 100, left 30; outer is another 50 up and 20 left.
+    assert "inner.top: 100" in out and "outer.top: 50" in out and "outer.left: 10" in out
+
+
+def test_boxes_that_enclose_each_other_are_rejected() -> None:
+    rules = parse_rules({"grid": {"rows": 1, "cols": 1}, "boxes": {"x": ["y"], "y": ["x"]}})
+    with pytest.raises(ValueError):
+        write_positions("a\n", Placement({NodeId("a"): Cell(0, 0)}), {NodeId("a"): Size(10, 10)}, rules)
