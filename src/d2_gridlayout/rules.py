@@ -20,7 +20,7 @@ Example:
     board = ["mcu", "ref*"]
 
     [routes]          # edge -> hand route, applied to the SVG by `route`
-    "a -> b" = {exit = "left", enter = "top", gap = 40, offset = 0}
+    "a -> b" = {exit = "left", enter = "top", gap = 40, offset = 0, center = false}
 
     [options]
     ignore = ["_*"]   # node id globs to leave out
@@ -104,7 +104,10 @@ def parse_rules(data: Mapping[str, Any]) -> Rules:
         if not isinstance(v, dict):
             raise ValueError(f"[routes] {k} must be a table like {{exit = \"left\", enter = \"top\"}}")
         try:
-            spec = RouteSpec(Side(v["exit"]), Side(v["enter"]), int(v.get("gap", 40)), int(v.get("offset", 0)))
+            spec = RouteSpec(
+                Side(v["exit"]), Side(v["enter"]), int(v.get("gap", 40)), int(v.get("offset", 0)),
+                bool(v.get("center", False)),
+            )
         except (KeyError, ValueError):
             raise ValueError(f"[routes] {k}: exit and enter must each be left, right, top or bottom") from None
         routes[k] = spec

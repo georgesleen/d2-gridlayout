@@ -111,3 +111,10 @@ def test_routes_a_real_d2_render(tmp_path: Path) -> None:
 def test_offset_moves_a_straight_line_along_the_entry_side() -> None:
     b = Rect(300, -100, 50, 400)
     assert route_points(A, b, RouteSpec(Side.RIGHT, Side.LEFT, offset=10))[0] == (104, 40)
+
+
+def test_centered_l_leaves_the_middle_of_the_exit_side() -> None:
+    src = Rect(0, 200, 100, 60)  # cx 50
+    dst = Rect(300, 0, 100, 60)  # cy 30
+    pts = route_points(src, dst, RouteSpec(Side.TOP, Side.LEFT, center=True))
+    assert pts == [(50, 196), (50, 30), (296, 30)]

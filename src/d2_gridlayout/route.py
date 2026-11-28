@@ -37,13 +37,15 @@ class RouteSpec:
 
     `gap` is the length, in px, of the last leg into a side that is not
     parallel to the first leg. `offset` moves the line along the entry side,
-    in px, so that two lines between the same blocks stay apart.
+    in px, so that two lines between the same blocks stay apart. `center`
+    starts an L at the middle of the exit side instead, and `gap` is then unused.
     """
 
     exit: Side
     enter: Side
     gap: int = 40
     offset: int = 0
+    center: bool = False
 
 
 @dataclass(frozen=True)
@@ -126,13 +128,14 @@ def route_points(src: Rect, dst: Rect, spec: RouteSpec) -> list[Point]:
     s_lo, s_hi = _span(src, spec.exit)
     end = _edge_point(dst, spec.enter, (d_lo + d_hi) / 2 + spec.offset)
     toward = {Side.TOP: -1, Side.BOTTOM: 1, Side.LEFT: -1, Side.RIGHT: 1}[spec.enter]
+    s_mid = (s_lo + s_hi) / 2
     if spec.exit.horizontal:  # enter is top or bottom
-        y = _clamp(end[1] + toward * spec.gap, s_lo + margin, s_hi - margin)
+        y = s_mid if spec.center else _clamp(end[1] + toward * spec.gap, s_lo + margin, s_hi - margin)
         if (y - end[1]) * toward <= 0:
             raise ValueError("source does not reach past the entry side")
         start = _edge_point(src, spec.exit, y)
         return [start, (end[0], y), end]
-    x = _clamp(end[0] + toward * spec.gap, s_lo + margin, s_hi - margin)
+    x = s_mid if spec.center else _clamp(end[0] + toward * spec.gap, s_lo + margin, s_hi - margin)
     if (x - end[0]) * toward <= 0:
         raise ValueError("source does not reach past the entry side")
     start = _edge_point(src, spec.exit, x)
