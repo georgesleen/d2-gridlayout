@@ -70,7 +70,22 @@ Define the tag as an empty class (`feedback: {}`) so D2 accepts it.
 
 Edges are read in arrow direction, so `a <- b` counts as running from b to a.
 Containers aren't placed (only the blocks inside them), and edges to a
-container are skipped with a warning.
+container are skipped with a warning. Blocks inside a container get positions
+relative to it, as TALA expects, and the container is placed around them.
+
+```toml
+[boxes]            # background box -> node id globs it encloses
+board = ["mcu", "r_*"]
+
+[options]
+box_padding = 40   # px between a box and its blocks
+box_label_px = 40  # extra px above for the box label
+```
+
+A box is a plain top-level shape drawn behind its blocks, which is an
+alternative to a container when you only want a visual grouping. The tool
+writes its position and size. Declare boxes first in the `.d2` file so they
+draw underneath.
 
 ## How it works
 

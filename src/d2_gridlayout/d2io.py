@@ -9,7 +9,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, NamedTuple
 
 from .model import Cell, Edge, EdgeKind, Graph, NodeId, Placement
 from .rules import DEFAULT_KIND, Rules
@@ -17,6 +17,9 @@ from .rules import DEFAULT_KIND, Rules
 HELPER = Path(__file__).with_name("d2_graph.mjs")
 BEGIN = "# --- d2-gridlayout positions (generated, edits here are overwritten) ---"
 END = "# --- end d2-gridlayout ---"
+OFFSET = "# offset"
+TALA_PADDING = 60
+"""Gap TALA puts between a container's edge and a child at top/left 0, in px."""
 
 
 @dataclass(frozen=True)
@@ -32,10 +35,10 @@ class Diagram:
     skipped_edges: tuple[str, ...]
 
 
-def compile_d2(path: Path) -> dict[str, Any]:
-    """Run the Node helper; it needs `npm install` in the repo root."""
+def compile_d2(source: str) -> dict[str, Any]:
+    """Run the Node helper on D2 source; it needs `npm install` in the repo root."""
     proc = subprocess.run(
-        ["node", str(HELPER), str(path)], capture_output=True, text=True, check=False
+        ["node", str(HELPER), "-"], input=source, capture_output=True, text=True, check=False
     )
     if proc.returncode != 0:
         raise RuntimeError(f"D2 compile failed: {proc.stderr.strip()}")
@@ -50,7 +53,7 @@ def build_diagram(data: Mapping[str, Any], rules: Rules) -> Diagram:
     nodes: list[NodeId] = []
     sizes: dict[NodeId, Size] = {}
     for n in data["nodes"]:
-        if n["container"] or ignored(n["id"]):
+        if n["container"] or ignored(n["id"]) or NodeId(n["id"]) in rules.boxes:
             continue
         nid = NodeId(n["id"])
         nodes.append(nid)
@@ -77,12 +80,87 @@ def build_diagram(data: Mapping[str, Any], rules: Rules) -> Diagram:
 
 
 def load_diagram(path: Path, rules: Rules) -> Diagram:
-    return build_diagram(compile_d2(path), rules)
+    """Read a diagram, ignoring any positions block a previous run wrote."""
+    return build_diagram(compile_d2(strip_positions(path.read_text())), rules)
 
 
 def strip_positions(source: str) -> str:
     pattern = re.compile(rf"\n*{re.escape(BEGIN)}.*?{re.escape(END)}\n?", re.S)
     return pattern.sub("\n", source).rstrip("\n") + "\n"
+
+
+class Pos(NamedTuple):
+    """A block's top-left corner in px."""
+
+    top: int
+    left: int
+
+
+def _parent(node: str) -> str | None:
+    return node.rsplit(".", 1)[0] if "." in node else None
+
+
+def nest(absolute: Mapping[str, Pos]) -> tuple[dict[str, Pos], Pos]:
+    """Convert absolute block positions to the parent-relative ones TALA reads.
+
+    Each container gets a position TALA_PADDING above and left of its
+    children. Top-level positions are shifted so none is negative; the second
+    value is that shift, which `unnest` takes back.
+    """
+    out = dict(absolute)
+    ancestors = {".".join(n.split(".")[:i]) for n in absolute for i in range(1, n.count(".") + 1)}
+    for c in sorted(ancestors, key=lambda c: -c.count(".")):
+        kids = [v for k, v in out.items() if _parent(k) == c]
+        out[c] = Pos(min(k.top for k in kids) - TALA_PADDING, min(k.left for k in kids) - TALA_PADDING)
+    top_level = [v for k, v in out.items() if _parent(k) is None]
+    shift = Pos(max(0, -min(v.top for v in top_level)), max(0, -min(v.left for v in top_level)))
+    rel: dict[str, Pos] = {}
+    for node, pos in out.items():
+        parent = _parent(node)
+        if parent is None:
+            rel[node] = Pos(pos.top + shift.top, pos.left + shift.left)
+        else:
+            rel[node] = Pos(pos.top - out[parent].top - TALA_PADDING, pos.left - out[parent].left - TALA_PADDING)
+    return rel, shift
+
+
+def unnest(relative: Mapping[str, Pos], shift: Pos) -> dict[str, Pos]:
+    """Undo `nest`: absolute positions of every block and container."""
+    out: dict[str, Pos] = {}
+
+    def resolve(node: str) -> Pos:
+        if node not in out:
+            pos, parent = relative[node], _parent(node)
+            if parent is None:
+                out[node] = Pos(pos.top - shift.top, pos.left - shift.left)
+            else:
+                p = resolve(parent)
+                out[node] = Pos(p.top + TALA_PADDING + pos.top, p.left + TALA_PADDING + pos.left)
+        return out[node]
+
+    for node in relative:
+        resolve(node)
+    return out
+
+
+def box_rects(
+    absolute: Mapping[str, Pos], sizes: Mapping[NodeId, Size], rules: Rules
+) -> dict[str, tuple[Pos, Size]]:
+    """The position and size of each background box, enclosing its member blocks."""
+    out: dict[str, tuple[Pos, Size]] = {}
+    for box, patterns in rules.boxes.items():
+        members = [n for n in absolute if any(fnmatch.fnmatchcase(n, p) for p in patterns)]
+        if not members:
+            raise ValueError(f"[boxes] {box} matches no placed block")
+        if any("." in m for m in members):
+            raise ValueError(f"[boxes] {box}: members must be top-level blocks")
+        pad, label = rules.box_padding, rules.box_label_px
+        top = min(absolute[m].top for m in members) - pad - label
+        left = min(absolute[m].left for m in members) - pad
+        bottom = max(absolute[m].top + sizes[NodeId(m)].height for m in members) + pad
+        right = max(absolute[m].left + sizes[NodeId(m)].width for m in members) + pad
+        out[box] = (Pos(round(top), round(left)), Size(round(right - left), round(bottom - top)))
+    return out
 
 
 def write_positions(
@@ -91,17 +169,30 @@ def write_positions(
     """Append a generated block of `top`/`left` settings, replacing any old one.
 
     Blocks are centred in their grid cell, so blocks of different sizes still
-    line up and the lines between them stay straight.
+    line up and the lines between them stay straight. Blocks inside containers
+    get container-relative positions, and the containers are placed around them.
+    Each background box from the rules is sized to enclose its member blocks.
     """
+    absolute: dict[str, Pos] = {}
+    for node, cell in placement.cells.items():
+        size = sizes[node]
+        absolute[node] = Pos(
+            round(cell.row * rules.row_px + (rules.row_px - size.height) / 2),
+            round(cell.col * rules.col_px + (rules.col_px - size.width) / 2),
+        )
+    boxes = box_rects(absolute, sizes, rules)
+    rel, shift = nest({**absolute, **{b: pos for b, (pos, _) in boxes.items()}})
     lines = [BEGIN, f"# grid {rules.grid.rows}x{rules.grid.cols}, pitch {rules.col_px}x{rules.row_px} px"]
+    if shift != Pos(0, 0):
+        lines.append(f"{OFFSET} {shift.top} {shift.left}")
     if tala:
         lines.append("vars: {d2-config: {layout-engine: tala}}")
-    for node in sorted(placement.cells, key=lambda n: (placement.cells[n], n)):
-        cell, size = placement.cells[node], sizes[node]
-        left = round(cell.col * rules.col_px + (rules.col_px - size.width) / 2)
-        top = round(cell.row * rules.row_px + (rules.row_px - size.height) / 2)
-        lines.append(f"{node}.top: {max(top, 0)}")
-        lines.append(f"{node}.left: {max(left, 0)}")
+    for name in sorted(rel, key=lambda n: (n.count("."), absolute.get(n, rel[n]), n)):
+        lines.append(f"{name}.top: {rel[name].top}")
+        lines.append(f"{name}.left: {rel[name].left}")
+        if name in boxes:
+            lines.append(f"{name}.width: {int(boxes[name][1].width)}")
+            lines.append(f"{name}.height: {int(boxes[name][1].height)}")
     lines.append(END)
     return strip_positions(source) + "\n" + "\n".join(lines) + "\n"
 
@@ -113,14 +204,18 @@ def read_positions(source: str, sizes: Mapping[NodeId, Size], rules: Rules) -> P
         return None
     tops: dict[str, int] = {}
     lefts: dict[str, int] = {}
-    for node, attr, value in re.findall(r"^(\S+)\.(top|left): (\d+)$", m.group(1), re.M):
-        (tops if attr == "top" else lefts)[node] = int(value)
+    for name, attr, value in re.findall(r"^(\S+)\.(top|left): (\d+)$", m.group(1), re.M):
+        (tops if attr == "top" else lefts)[name] = int(value)
+    off = re.search(rf"^{re.escape(OFFSET)} (\d+) (\d+)$", m.group(1), re.M)
+    shift = Pos(int(off.group(1)), int(off.group(2))) if off else Pos(0, 0)
+    absolute = unnest({n: Pos(tops[n], lefts[n]) for n in tops if n in lefts}, shift)
     cells: dict[NodeId, Cell] = {}
     for node, size in sizes.items():
-        if node not in tops or node not in lefts:
+        if node not in absolute:
             print(f"warning: no saved position for {node}", file=sys.stderr)
             return None
-        col = round((lefts[node] + size.width / 2) / rules.col_px - 0.5)
-        row = round((tops[node] + size.height / 2) / rules.row_px - 0.5)
+        pos = absolute[node]
+        col = round((pos.left + size.width / 2) / rules.col_px - 0.5)
+        row = round((pos.top + size.height / 2) / rules.row_px - 0.5)
         cells[node] = Cell(row, col)
     return Placement(cells)

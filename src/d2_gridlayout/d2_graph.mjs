@@ -1,5 +1,5 @@
 // Compile a D2 file and print its blocks and connections as JSON on stdout.
-// Usage: node d2_graph.mjs diagram.d2
+// Usage: node d2_graph.mjs diagram.d2   (or - to read stdin)
 import { D2 } from '@terrastruct/d2';
 import fs from 'node:fs';
 
@@ -10,7 +10,8 @@ if (!path) {
 }
 try {
   const d2 = new D2();
-  const r = await d2.compile(fs.readFileSync(path, 'utf8'), { layout: 'elk' });
+  const source = fs.readFileSync(path === '-' ? 0 : path, 'utf8');
+  const r = await d2.compile(source, { layout: 'elk' });
   const shapes = r.diagram.shapes;
   const ids = new Set(shapes.map((s) => s.id));
   const out = {

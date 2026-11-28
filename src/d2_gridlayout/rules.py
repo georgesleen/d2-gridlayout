@@ -16,8 +16,13 @@ Example:
     [pins]            # node id -> [row, col]
     usb = [0, 1]
 
+    [boxes]           # background box id -> node id globs it encloses
+    board = ["mcu", "ref*"]
+
     [options]
     ignore = ["_*"]   # node id globs to leave out
+    box_padding = 40  # gap between a box and the blocks inside it, px
+    box_label_px = 40 # extra room above for the box label, px
 """
 
 from __future__ import annotations
@@ -40,6 +45,9 @@ class Rules:
     directions: Mapping[EdgeKind, Direction]
     pins: Mapping[NodeId, Cell] = field(default_factory=dict)
     ignore: tuple[str, ...] = ()
+    boxes: Mapping[NodeId, tuple[str, ...]] = field(default_factory=dict)
+    box_padding: int = 40
+    box_label_px: int = 40
 
     def direction_for(self, kind: EdgeKind) -> Direction:
         return self.directions.get(kind, self.directions.get(DEFAULT_KIND, Direction.FREE))
@@ -72,11 +80,23 @@ def parse_rules(data: Mapping[str, Any]) -> Rules:
             raise ValueError(f"[pins] {k} at {v} is outside the {grid.rows}x{grid.cols} grid")
         pins[NodeId(k)] = cell
 
-    ignore = data.get("options", {}).get("ignore", [])
+    opts = data.get("options", {})
+    ignore = opts.get("ignore", [])
     if not all(isinstance(x, str) for x in ignore):
         raise ValueError("[options] ignore must be a list of strings")
 
-    return Rules(grid, _int(g, "col_px", 420), _int(g, "row_px", 140), directions, pins, tuple(ignore))
+    boxes: dict[NodeId, tuple[str, ...]] = {}
+    for k, v in data.get("boxes", {}).items():
+        if not (isinstance(v, list) and v and all(isinstance(x, str) for x in v)):
+            raise ValueError(f"[boxes] {k} must be a non-empty list of node id globs")
+        if "." in k:
+            raise ValueError(f"[boxes] {k}: boxes must be top-level D2 shapes")
+        boxes[NodeId(k)] = tuple(v)
+
+    return Rules(
+        grid, _int(g, "col_px", 420), _int(g, "row_px", 140), directions, pins, tuple(ignore),
+        boxes, _int(opts, "box_padding", 40), _int(opts, "box_label_px", 40),
+    )
 
 
 def load_rules(path: Path) -> Rules:
