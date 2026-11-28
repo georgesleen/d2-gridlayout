@@ -129,3 +129,9 @@ def test_small_block_still_gets_a_straight_line() -> None:
     dot = Rect(0, 23, 14, 14)  # cy 30
     tall = Rect(300, 0, 50, 400)
     assert route_points(dot, tall, RouteSpec(Side.RIGHT, Side.LEFT)) == [(18, 30), (296, 30)]
+
+
+def test_straight_line_hits_the_centre_of_a_small_destination() -> None:
+    wide = Rect(0, 0, 240, 64)  # centre x 120
+    small = Rect(10, 200, 60, 70)  # centre x 40
+    assert route_points(wide, small, RouteSpec(Side.BOTTOM, Side.TOP)) == [(40, 68), (40, 196)]

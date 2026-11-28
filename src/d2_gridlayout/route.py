@@ -97,7 +97,8 @@ def _clamp(v: float, lo: float, hi: float) -> float:
 def route_points(src: Rect, dst: Rect, spec: RouteSpec) -> list[Point]:
     """The corner points of an orthogonal route from `src` to `dst`.
 
-    Parallel sides give a straight line where the blocks overlap, else a Z
+    Parallel sides give a straight line where the blocks overlap, through the
+    source centre, else the destination centre, else the overlap middle; else a Z
     with its middle leg halfway between them. Perpendicular sides give an L
     whose last leg is `spec.gap` long, or longer when the source does not
     reach that far.
@@ -114,7 +115,14 @@ def route_points(src: Rect, dst: Rect, spec: RouteSpec) -> list[Point]:
         m = min(margin, (s_hi - s_lo) / 2, (d_hi - d_lo) / 2)
         lo, hi = max(s_lo, d_lo) + m, min(s_hi, d_hi) - m
         if lo <= hi:
-            along = (_clamp(s_mid, lo, hi) if d_lo <= s_mid <= d_hi else (lo + hi) / 2) + spec.offset
+            d_mid = (d_lo + d_hi) / 2
+            if lo <= s_mid <= hi:
+                along = s_mid
+            elif lo <= d_mid <= hi:
+                along = d_mid
+            else:
+                along = (lo + hi) / 2
+            along += spec.offset
             return [_edge_point(src, spec.exit, along), _edge_point(dst, spec.enter, along)]
         a = _edge_point(src, spec.exit, s_mid)
         b = _edge_point(dst, spec.enter, (d_lo + d_hi) / 2)
