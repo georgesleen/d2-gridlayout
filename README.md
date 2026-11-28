@@ -102,6 +102,7 @@ listed lines in the rendered SVG, keeping D2's colours, arrowheads and labels:
 ```
 
 Parallel sides give a straight line where the blocks overlap, or a Z.
+The same side on both blocks gives a U whose far leg is `gap` px beyond them.
 Perpendicular sides give an L whose last leg is `gap` px long. `offset` moves
 the line along the entry side, so that two lines between the same blocks stay
 apart. `center = true` starts an L at the middle of its exit side. Keys are D2 edge ids; add `[n]` for the nth edge between a pair. D2

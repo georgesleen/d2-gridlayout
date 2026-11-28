@@ -135,3 +135,9 @@ def test_straight_line_hits_the_centre_of_a_small_destination() -> None:
     wide = Rect(0, 0, 240, 64)  # centre x 120
     small = Rect(10, 200, 60, 70)  # centre x 40
     assert route_points(wide, small, RouteSpec(Side.BOTTOM, Side.TOP)) == [(40, 68), (40, 196)]
+
+
+def test_same_side_gives_a_u_over_both_blocks() -> None:
+    a = Rect(0, 100, 20, 20)  # top 100, centre x 10
+    b = Rect(200, 90, 40, 40)  # top 90, centre x 220
+    assert route_points(a, b, RouteSpec(Side.TOP, Side.TOP, gap=30)) == [(10, 96), (10, 56), (220, 56), (220, 86)]
